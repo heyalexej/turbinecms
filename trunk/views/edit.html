@@ -1,0 +1,218 @@
+{% extends "admin.html" %}
+
+{% block head %}
+<script>
+// Initialize TinyMCE
+tinyMCE.init({
+	plugins : '',
+	mode : "textareas",
+	theme : "advanced",
+	theme_advanced_buttons1 : "bold,italic,underline,separator,strikethrough,justifyleft,justifycenter,justifyright,justifyfull,bullist,numlist,undo,redo,link,unlink",
+	theme_advanced_buttons2 : "",
+	theme_advanced_buttons3 : "",
+	theme_advanced_toolbar_location : "top",
+	theme_advanced_toolbar_align : "left",
+	theme_advanced_statusbar_location : "bottom"
+});
+
+
+// Strip function for strings
+strip = function(str){
+	if(str){
+		return str.replace(/^\s+|\s+$/g,"");
+	}
+	else{
+		return '';
+	}
+};
+
+// URL cleaner (removes non ASCII chars)
+clean_url = function(url){
+	function convert(match){
+		var conversion = {
+			'õ':'o', 'ä':'a', 'ö':'o', 'ü':'u', 'š':'s', 'ž':'z', ' ':'-', 'а':'a', 'б':'b', 'в':'v', 'г':'g', 'д':'d', 'е':'e', 'ё':'o', 'ж':'s', 'з':'z', 'и':'i', 'й':'i', 'к':'k', 'л':'l', 'м':'m', 'н':'n', 'о':'o', 'п':'p', 'р':'r', 'с':'s', 'т':'t', 'у':'u', 'ф':'f', 'х':'h', 'ц':'z', 'ч':'z', 'ш':'s', 'щ':'s', 'ы':'o', 'э':'e', 'ю':'ju', 'я':'ja', 'ā':'a', 'č':'c', 'ē':'e', 'ģ':'g', 'ī':'i', 'ķ':'k', 'ļ':'l', 'ņ':'n', 'ū':'u', 'ñ':'n', 'ß':'ss', 'ą':'a', 'ę':'e', 'ė':'e', 'į':'i', 'ų':'u'
+		}
+		return conversion[match] || '';
+	}
+	url = url.toLowerCase().replace(/[^A-Za-z\-0-9]/g, convert);
+	url = url.replace(/\-+/g,'-');
+	if(!url.length){
+		url = 'page';
+	}
+	return url;
+};
+
+// Changes the url
+urlchange = function(){
+	var title = strip($('title').value);
+	$('url').value = clean_url(title);
+	$('url_str').innerHTML = clean_url(title);
+};
+
+
+// Enables/disables the $('published') checkbox according to the state of $('front') checkbox
+frontchange = function(){
+	if($('front').checked){
+		$('draft').checked = false;
+		$('draft').disabled = true;
+	}else{
+		$('draft').disabled = false;
+		$('draft').checked = {% if draft %}true{% else %}false{% endif %};
+	}
+};
+
+
+$(document).observe('dom:loaded', function(){
+	
+	{% if page %}
+	{% else %}
+		// This function is activated only if this is a new page
+		$('title').observe('change', urlchange);
+		$('title').observe('keyup', urlchange);
+		urlchange();
+	{% endif %}
+	
+	// If the $('front') checkbox state is changed, run frontchage()
+	$('front').observe('click', frontchange);
+	$('front').observe('change', frontchange);
+	frontchange(); // Initial run (when the browser has set the checkbox with cached state etc.)
+	
+	
+	// Handle media manager tabs
+	 
+	$('upload_tab').observe('click', function(){
+		$('upload_tab').addClassName('selected_tab');
+		$('manager_tab').removeClassName('selected_tab');
+		$('mediaupload').show();
+		$('medialist').hide();
+	})
+
+	$('manager_tab').observe('click', function(){
+		$('upload_tab').removeClassName('selected_tab');
+		$('manager_tab').addClassName('selected_tab');
+		$('mediaupload').hide();
+		$('medialist').show();
+	})
+	
+})
+</script>
+
+{% endblock %}
+
+{% block content %}
+
+<form method="post" action="/admin/edit">
+	<input type="hidden" name="key" value="{% if page %}{{ page.key }}{% endif %}" />
+	<input type="hidden" name="url" id="url" value="{% if url %}{{ url|escape }}{% else %}page{% endif %}" />
+	<table style="width:100%">
+		<tr>
+			<td width="150">
+				<label for="title" width="120">Page title</label>
+			</td>
+			<td>
+				<input type="text" name="title" id="title" value="{% if page %}{{ page.title|escape }}{% endif %}" />
+			</td>
+		</tr>
+		<tr>
+			<td colspan="2">
+				<input type="checkbox" name="front" id="front" {% if front %}checked="CHECKED"{% endif %}/>
+				<label for="front">Use this page for site frontpage</label>
+				{% if front %}<br />NB! You can't remove a page from the frontpage by unchecking the checkbox - the only way is to replace it with an another page by setting it as the frontpage.{% endif %}
+			</td>
+		</tr>
+		<tr>
+			<td colspan="2">		
+				<input type="checkbox" name="draft" id="draft" {% if draft %}checked="CHECKED"{% endif %}/>
+				<label for="published">Draft</label>
+			</td>
+		</tr>
+		<tr>
+			<td>
+				Page URL
+			</td>
+			<td style="font-weight: bold;">
+				/page/<span id="url_str">{% if url %}{{ url|escape }}{% else %}page{% endif %}</span>
+			</td>
+		</tr>
+		<tr>
+			<td width="150">
+				<label for="owner" width="120">Parent</label>
+			</td>
+			<td>
+				<select name="owner" id="owner">
+				<option value=""> - Top -</option>
+				{% for link in links %}
+
+				<option value="{{ link.key|escape }}"{% ifequal owner link.key %} selected="SELECTED"{% endifequal%}>{{ link.title|escape }}</option>
+				{% endfor %}
+				</select>
+			</td>
+		</tr>
+		<tr>
+			<td colspan="2">
+				<label for="content">Page content</label>
+			</td>
+		</tr>
+		<tr>
+			<td colspan="2">
+				<textarea name="content" id="content" style="width: 100%; height: 240px;">{% if page %}{{ page.content|escape }}{% endif %}</textarea>
+			</td>
+		</tr>
+		<tr>
+			<td colspan="2">
+				<input type="submit" name="ok" value="Save page" />
+			</td>
+		</tr>
+	</table>
+</form>
+
+<form method="/admin/upload">
+	<p>
+		<b>Images</b>
+	</p>
+
+	<div class="tabs">
+		<div class="tab selected_tab" id="upload_tab">Upload</div>
+		<div class="tab" id="manager_tab">Manager</div>
+		<div style="clear: both"></div>
+	</div>
+
+	<div id="mediaupload" class="mediaupload">
+		<table>
+			<tr>
+				<td>
+					<label for="file" width="120">Select file</label>
+				</td>
+				<td>
+					<input type="file" name="file" id="file" />
+				</td>
+			</tr>
+			<tr>
+				<td colspan="2">
+					<span class="stay_low">NB! Allowed file types: JPG, PNG, GIF. Max. file size 1 MB.</span>
+				</td>
+			</tr>
+			<tr>
+				<td>
+					<label for="description" width="120">Description</label>
+				</td>
+				<td>
+					<input type="text" name="description" id="description" style="width: 500px"/>
+				</td>
+			</tr>
+			<tr>
+				<td colspan="2">
+					<input type="submit" name="ok" value="Upload file" />
+				</td>
+			</tr>
+		</table>
+	</div>
+
+	<div id="medialist" class="medialist" style="display: none">
+		<div class="medialist_files">
+		</div>
+	</div>
+
+</form>
+
+{% endblock %}
