@@ -149,9 +149,11 @@ h1 small{
 }
 
 .formatted{
+	margin:0;
+	padding:0;
 	border-left: 1px solid #F1F0F0;
 	border-top: 1px solid #F1F0F0;
-	margin: 10px; 
+	margin: 10px 0; 
 }
 
 .formatted thead tr{
@@ -192,8 +194,75 @@ h1 small{
 }
 
 .medialist_files{
-	height: 600px;
-	background: #E1E0E0;
+
+}
+
+.medialist_file{
+	width: 80px;
+	height: 60px;
+	padding: 0px;
+	border: 1px solid #F1F0F0;
+	margin: 0px 0px 1px 1px;
+	background-color: #FAFAFA;
+	background-position: center center;
+	background-repeat: no-repeat;
+	float: left;
+	overflow:hidden;
+	position: relative;
+}
+
+.medialist_file_text{
+	font-size: 10px;
+	color: white;
+	background: #4096EE;
+	margin:0;
+	padding:0;
+	line-height: 100%;
+	float: left;
+}
+
+.medialist_file_selected{
+	border: 1px solid #FF7400;
+}
+
+.medialist_file_overlay{
+	width: 80px;
+	height: 60px;
+	position: absolute;
+	left: 0px;
+	top:0px;
+}
+
+.medialist_file_background{
+	width: 80px;
+	height: 60px;
+	position: absolute;
+	z-index: 100;
+	left: 0px;
+	top:0px;
+	background-color: #666;
+	opacity:0.6;
+	filter:alpha(opacity=60);
+}
+
+.medialist_file_button{
+	position:relative;
+	z-index: 1000;
+	cursor: pointer;
+	margin: 3px;
+	padding: 2px;
+	background: #FAFAFA;
+	border: 1px solid #F1F0F0;
+	font-size: 10px;
+	color: black;
+	text-align: center;
+	line-height: 100%;
+	overflow: hidden;
+}
+
+.medialist_file_button_mouseover{
+	background: #4096EE;
+	color: white;
 }
 
 .tabs{
@@ -221,4 +290,14 @@ h1 small{
 .selected_tab{
 	background: white;
 	border-bottom: 1px solid white;
+}
+
+.error_msg{
+	margin: 2px 0;
+	background: #D01F3C;
+	font-size: 12px;
+	color: white;
+	padding: 3px 10px;
+	-moz-border-radius: 3px;
+	-webkit-border-radius: 3px;
 }

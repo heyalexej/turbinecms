@@ -10,16 +10,13 @@ indexes:
 # automatically uploaded to the admin console when you next deploy
 # your application using appcfg.py.
 
-# Admin dashboard
-- kind: Page
-  properties:
-  - name: owner
-  - name: title
-
-# Subpages
 - kind: Page
   properties:
   - name: owner
   - name: created
     direction: desc
-  
+
+- kind: Page
+  properties:
+  - name: owner
+  - name: title

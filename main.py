@@ -47,6 +47,7 @@ import re
 from django.utils import simplejson as json
 import urllib
 import logging
+from google.appengine.api import images
 
 
 ########################### DATABASE DEFINITIONS ###########################
@@ -68,6 +69,16 @@ class Page(db.Model):
   owner = db.SelfReferenceProperty()
   created = db.DateTimeProperty(auto_now_add=True)
   edited = db.DateTimeProperty(auto_now=True)
+
+class Media(db.Model):
+  name = db.StringProperty()
+  type = db.StringProperty()
+  description = db.StringProperty()
+  file = db.BlobProperty()
+  thumbnail = db.BlobProperty()
+  width = db.IntegerProperty()
+  height = db.IntegerProperty()
+  uploaded = db.DateTimeProperty(auto_now_add = True)
 
 ########################### HELPER FUNCTIONS ###########################
 
@@ -253,14 +264,15 @@ class PageHandler(webapp.RequestHandler):
     # Load current page
     page = get_page(url)
     
-    # Load subpages
-    subpages = memcache.get('subpage-%s' % str(page.key()))
-    if subpages is None:
-      q = Page.all()
-      q.filter("owner =", page)
-      q.order("-created")
-      subpages = q.fetch(1000)
-      memcache.set('subpage-%s' % str(page.key()), subpages)
+    if page:
+      # Load subpages
+      subpages = memcache.get('subpage-%s' % str(page.key()))
+      if subpages is None:
+        q = Page.all()
+        q.filter("owner =", page)
+        q.order("-created")
+        subpages = q.fetch(1000)
+        memcache.set('subpage-%s' % str(page.key()), subpages)
     
     if not page or page.draft:
       return error_404(self)
@@ -372,7 +384,26 @@ class AdminEditHandler(webapp.RequestHandler):
     #Load current page
     if url:
       page = get_page(url)
-    
+
+    files = memcache.get('files')
+    if files is None:
+      files = []
+      query = Media.all()
+      query.order('-uploaded')
+      f = query.fetch(1000)
+      for file in f:
+        files.append({
+          'width': file.height,
+          'height': file.width,
+          'type':file.type,
+          'key':str(file.key()),
+          'name':file.name,
+          'status':'OK',
+          'description':file.description
+        })
+      if files:
+        memcache.set('files', files)
+
     #Render page
     template_values = {
         'site_title': site_prefs['title'],
@@ -382,7 +413,8 @@ class AdminEditHandler(webapp.RequestHandler):
         'draft': not page or page.draft,
         'page': page,
         'front':page and site_prefs['front']==page.url or False,
-        'links': get_links()
+        'links': get_links(),
+        'files': json.dumps(files)
     }
     path = os.path.join(os.path.dirname(__file__), 'views/edit.html')
     self.response.out.write(template.render(path, template_values))
@@ -477,13 +509,132 @@ class AdminSiteHandler(webapp.RequestHandler):
     
     self.redirect("/admin?updated=true")
 
+class AdminUploadHandler(webapp.RequestHandler):
+  def post(self):
+
+    template_values = {
+        'status':'',
+        'width': 0,
+        'height': 0,
+        'type':'',
+        'key':'',
+        'name':'',
+        'description':''
+    }
+    
+    if not self.request.get('file') or len(self.request.get('file'))>1024*1024:
+      template_values['status'] = 'ERROR'
+      path = os.path.join(os.path.dirname(__file__), 'views/upload_response.html')
+      self.response.out.write(template.render(path, template_values))
+      return
+
+    media = Media()
+    media.name = self.request.params['file'].filename
+    media.description = self.request.get('description')
+
+    try:
+      img = images.Image(self.request.get('file'))
+      width = img.width
+      height = img.height
+      
+      media.type="IMAGE"
+      
+      if width>800 or height>600:
+        img.resize(width=800, height=600)
+        
+      img.im_feeling_lucky()
+      media.file = img.execute_transforms(output_encoding=images.JPEG)
+
+      img = images.Image(media.file)
+      media.width = img.width
+      media.height = img.height
+      
+      img.resize(width=80, height=60)
+      img.im_feeling_lucky()
+      media.thumbnail = img.execute_transforms(output_encoding=images.JPEG)
+    except:
+      media.file = self.request.get('file')
+      media.type="FILE"
+      media.width = 0
+      media.height = 0
+
+    media.put()
+    
+    template_values['status'] = 'OK'
+    template_values['type'] = media.type
+    template_values['name'] = media.name
+    template_values['width'] = media.width
+    template_values['height'] = media.height
+    template_values['description'] = media.description
+    template_values['key'] = str(media.key())
+    
+    memcache.delete('files')
+    path = os.path.join(os.path.dirname(__file__), 'views/upload_response.html')
+    self.response.out.write(template.render(path, template_values))
+
+class RemoveMedia(webapp.RequestHandler):
+  def post(self):
+    key = self.request.get('key')
+    try:
+      image = Media.get(key) 
+    except:
+      image = False
+    if image:
+      image.delete()
+    
+    memcache.delete('image_%s_%s' % ('full',key))
+    memcache.delete('image_%s_%s' % ('thumb',key))
+    memcache.delete('media_%s' % key)
+    memcache.delete('files')
+    
+    self.response.out.write('deleted')
+
+class ImageHandler(webapp.RequestHandler):
+  def get(self, size, key, name=''):
+    
+    image = memcache.get('image_%s_%s' % (size,key))
+    if image is None:
+      try:
+        image = Media.get(key) 
+      except:
+        image = False
+      memcache.set('image_%s_%s' % (size,key), image)
+
+    if image:
+      self.response.headers['Content-Type'] = 'image/jpeg'
+      self.response.out.write(size=='full' and image.file or image.thumbnail)
+    else:
+      return error_404(self)
+
+class MediaHandler(webapp.RequestHandler):
+  def get(self, key, name=''):
+    
+    media = memcache.get('media_%s' % key)
+    if media is None:
+      try:
+        media = Media.get(key) 
+      except:
+        media = False
+      memcache.set('media_%s' % key, media)
+
+    if media:
+      self.response.headers['Content-Type'] = 'application/octet-stream'
+      self.response.headers['Content-disposition'] = 'attachment; filename="%s"' % str(media.name)
+      self.response.out.write(media.file)
+    else:
+      return error_404(self)
+
 def main():
   application = webapp.WSGIApplication([('/', PageHandler),
                                         (r'/page/(.*)', PageHandler),
+                                        (r'/image/(.*)/(.*)/(.*)', ImageHandler),
+                                        (r'/download/(.*)/(.*)', MediaHandler),
+                                        ('/admin/upload', AdminUploadHandler),
                                         ('/admin', AdminMainHandler),
                                         ('/admin/add', AdminEditHandler),
                                         ('/admin/site', AdminSiteHandler),
                                         ('/admin/edit', AdminEditHandler),
+                                        ('/admin/remove-media', RemoveMedia),
                                         ('/admin/publish', AdminPublishHandler),
                                         ('/admin/unpublish', AdminUnPublishHandler),
                                         (r'/admin/edit/(.*)', AdminEditHandler),
