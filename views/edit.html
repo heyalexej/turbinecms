@@ -110,7 +110,7 @@ $(document).observe('dom:loaded', function(){
 				<label for="title" width="120">Page title</label>
 			</td>
 			<td>
-				<input type="text" name="title" id="title" value="{% if page %}{{ page.title|escape }}{% endif %}" />
+				<input type="text" name="title" id="title" style="width: 300px;" value="{% if page %}{{ page.title|escape }}{% endif %}" />
 			</td>
 		</tr>
 		<tr>
