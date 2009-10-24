@@ -1,7 +1,7 @@
 <!DOCTYPE HTML>
 <head>
     <meta http-equiv="content-type" content="text/html; charset=utf-8"/>
-    <title>{% if title %}{{ title }} | {% endif %}{{ site_title }}</title>
+    <title>{% if page.title %}{{ page.title }} | {% endif %}{{ site_title }}</title>
 
     <style type="text/css">
     body {
@@ -27,7 +27,7 @@
     #banner {
         padding: 0;
         margin-bottom: 0;
-        background-color: #356AA0;
+        background-color: #73880A;
     }
 
     #content_div {
@@ -152,6 +152,10 @@
         font-weight: normal;
     }
     
+    h2 small{
+        font-size: 12px;
+    }
+    
     h2 a{
     	text-decoration: none;
     }
@@ -189,22 +193,27 @@
 
     <div id="content_div">
 
-        <h1>{% if title %}{{ title }}{% else %}{{ site_title }}{% endif %}</h1>
-        <div>{{content}}</div>
+        <h1>{% if page.title %}{{ page.title }}{% else %}{{ site_title }}{% endif %}
+        {% if page.owner %}<br /><small>{{ page.created|date:"l, j M. Y"}}</small>{% endif %}
+        </h1>
+
+        <div>{{page.content}}</div>
         
         {% if subpages %}
         	<div style="border-top: 1px #CCC"></div>
         	{% for subpage in subpages %}
-        		<div style="background: {% cycle #F1F0F0,#FFFFFF %}">
-        			<h2><a href="/page/{{ subpage.url|escape }}">{{ subpage.title|escape }}</a></h1>
-        			<div>{{ subpage.content }}</div>
+        		<div style="background: {% cycle #FAFAFA,#FFFFFF %}; padding: 10px;">
+        			<h2><a href="/page/{{ subpage.url|escape }}">{{ subpage.title|escape }}</a><br />
+        			<small>{{ subpage.created|date:"l, j M. Y"}}</small></h2>
+        			<div>{{ subpage.content|truncatewords_html:30 }}
+        			<a href="/page/{{ subpage.url|escape }}">read more...</a></div>
         		</div>
         	{% endfor %}
         {% endif %}
 
     </div>
 
-    <div id="footer"><p>&copy; 2009 <a href="http://www.turbinecms.com/">TurbineCMS</a>. <a href="/admin">Log in</a></p></div>
+    <div id="footer"><p>&copy; 2009 <a href="http://www.turbinecms.com/">TurbineCMS</a>. <a href="/admin">Admin</a></p></div>
     </div>
 
 </body>

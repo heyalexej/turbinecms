@@ -218,34 +218,6 @@ def get_links():
   return links
 
 
-def smart_str(s, encoding='utf-8', strings_only=False, errors='strict'):
-  """
-  Returns a bytestring version of 's', encoded as specified in 'encoding'.
-  If strings_only is True, don't convert (some) non-string-like objects.
-  """
-  if strings_only and isinstance(s, (types.NoneType, int)):
-    return s
-  if isinstance(s, str):
-    return unicode(s).encode(encoding, errors)
-  elif not isinstance(s, basestring):
-    try:
-      return str(s)
-    except UnicodeEncodeError:
-      if isinstance(s, Exception):
-        # An Exception subclass containing non-ASCII data that doesn't
-        # know how to print itself properly. We shouldn't raise a
-        # further exception.
-        return ' '.join([smart_str(arg, encoding, strings_only,
-            errors) for arg in s])
-      return unicode(s).encode(encoding, errors)
-  elif isinstance(s, unicode):
-    return s.encode(encoding, errors)
-  elif s and encoding != 'utf-8':
-    return s.decode('utf-8', errors).encode(encoding, errors)
-  else:
-    return s
-
-
 ########################### VIEW HANDLERS ###########################
 
 # PageHandler
@@ -281,10 +253,8 @@ class PageHandler(webapp.RequestHandler):
     template_values = {
         'site_title': site_prefs['title'],
         'description': site_prefs['description'],
-        'title': page.title,
-        'content': page.content,
+        'page':page,
         'subpages': subpages,
-        'url': page.url,
         'links': get_links()
     }
 
@@ -330,6 +300,9 @@ class AdminMainHandler(webapp.RequestHandler):
     path = os.path.join(os.path.dirname(__file__), 'views/dashboard.html')
     self.response.out.write(template.render(path, template_values))
 
+# AdminPublishHandler
+# Publishes draft page
+
 class AdminPublishHandler(webapp.RequestHandler):
   def get(self):
     key = self.request.get('key')
@@ -344,6 +317,9 @@ class AdminPublishHandler(webapp.RequestHandler):
     memcache.set("page-%s" % page.url, page)
     memcache.delete("site-links")
     self.redirect("/admin?published=%s" % key)
+
+# AdminUnPublishHandler
+# UnPublishes selected page by maiking it a draft
 
 class AdminUnPublishHandler(webapp.RequestHandler):
   def get(self):
@@ -360,6 +336,9 @@ class AdminUnPublishHandler(webapp.RequestHandler):
     memcache.delete("site-links")
     self.redirect("/admin?unpublished=%s" % key)
 
+# AdminRemoveHandler
+# Deletes a page
+
 class AdminRemoveHandler(webapp.RequestHandler):
   def get(self, url=False):
     if not url:
@@ -374,6 +353,9 @@ class AdminRemoveHandler(webapp.RequestHandler):
     memcache.delete("page-%s" % url)
     memcache.delete("site-links")
     self.redirect("/admin?removed=true")
+
+# AdminEditHandler
+# Add or edit an existing page
 
 class AdminEditHandler(webapp.RequestHandler):
   def get(self, url=False):
@@ -444,7 +426,7 @@ class AdminEditHandler(webapp.RequestHandler):
     
     if not page:
       page = Page()
-      page.url = smart_str(get_unique_url(len(url) and url or u'page')) # url is set at the first save
+      page.url = get_unique_url(len(url) and url or u'page') # url is set at the first save
     
 
     page.title = title
@@ -471,6 +453,9 @@ class AdminEditHandler(webapp.RequestHandler):
         memcache.delete("site-links")
     
     self.redirect("/admin?saved=%s" % str(page.key()))
+
+# AdminSiteHandler
+# Edit site settings
 
 class AdminSiteHandler(webapp.RequestHandler):
   def get(self):
@@ -508,6 +493,9 @@ class AdminSiteHandler(webapp.RequestHandler):
     set_site_prefs(site_prefs)
     
     self.redirect("/admin?updated=true")
+
+# AdminUploadHandler
+# Upload file
 
 class AdminUploadHandler(webapp.RequestHandler):
   def post(self):
@@ -572,6 +560,9 @@ class AdminUploadHandler(webapp.RequestHandler):
     path = os.path.join(os.path.dirname(__file__), 'views/upload_response.html')
     self.response.out.write(template.render(path, template_values))
 
+# RemoveMedia
+# Deletes selected file
+
 class RemoveMedia(webapp.RequestHandler):
   def post(self):
     key = self.request.get('key')
@@ -589,6 +580,9 @@ class RemoveMedia(webapp.RequestHandler):
     
     self.response.out.write('deleted')
 
+# ImageHandler
+# Displays selected image in requested size (full size on thumbnail)
+
 class ImageHandler(webapp.RequestHandler):
   def get(self, size, key, name=''):
     
@@ -605,6 +599,9 @@ class ImageHandler(webapp.RequestHandler):
       self.response.out.write(size=='full' and image.file or image.thumbnail)
     else:
       return error_404(self)
+
+# MediaHandler
+# Forces download of selected file
 
 class MediaHandler(webapp.RequestHandler):
   def get(self, key, name=''):
