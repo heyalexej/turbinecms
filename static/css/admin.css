@@ -148,6 +148,11 @@ h1 small{
 	font-size: 13px;
 }
 
+h2{
+	font-size: 18px;
+	font-weight: normal;
+}
+
 .formatted{
 	margin:0;
 	padding:0;

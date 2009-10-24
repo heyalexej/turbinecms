@@ -244,8 +244,8 @@ $(document).observe('dom:loaded', function(){
 		<tr>
 			<td colspan="2">
 				<input type="checkbox" name="front" id="front" {% if front %}checked="CHECKED"{% endif %}/>
-				<label for="front">Use this page for site frontpage</label>
-				{% if front %}<br />NB! You can't remove a page from the frontpage by unchecking the checkbox - the only way is to replace it with an another page by setting it as the frontpage.{% endif %}
+				<label for="front">Use this page as the site front page</label>
+				{% if front %}<br />NB! You can't remove a page from the front page by unchecking the checkbox - the only way is to replace it with an another page by setting it as the front page.{% endif %}
 			</td>
 		</tr>
 		<tr>
@@ -294,9 +294,9 @@ $(document).observe('dom:loaded', function(){
 	</table>
 </form>
 
-<p>
-	<b>Images</b>
-</p>
+<h2>
+	<b>Images and files</b>
+</h2>
 
 <div class="tabs">
 	<div class="tab selected_tab" id="upload_tab">Upload</div>
