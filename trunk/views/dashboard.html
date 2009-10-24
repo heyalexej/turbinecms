@@ -49,7 +49,12 @@ $(document).observe('dom:loaded', function(){
 			{% for page in pages %}
 				<tr id="row_{{page.key}}">
 					<td>
-						<a href="/page/{{ page.url|escape }}">{{ page.title|escape }}<a/>{% if front %}{% ifequal page.url front%} (<span class="stay_low">Frontpage</span>){% endifequal%}{% endif %}
+						{% if page.draft %}
+							{{ page.title|escape }}
+						{% else %}
+							<a href="/page/{{ page.url|escape }}">{{ page.title|escape }}<a/>
+						{% endif %}
+						{% if front %}{% ifequal page.url front%} (<span class="stay_low">Frontpage</span>){% endifequal%}{% endif %}
 					</td>
 					<td>
 						{% if page.draft %}
