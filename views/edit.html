@@ -296,13 +296,9 @@ $(document).observe('dom:loaded', function(){
 
 <h2>Images and files</h2>
 
-<div class="tabs">
-	<div class="tab selected_tab" id="upload_tab">Upload</div>
-	<div class="tab" id="manager_tab">Manager</div>
-	<div style="clear: both"></div>
-</div>
-
-<div id="mediaupload" class="mediaupload">
+{% spaceless %}
+<!-- spaces need to be deleted because of IE - or there will be an empty row between tabs and divs -->
+<div class="tabs"><div class="tab selected_tab" id="upload_tab">Upload</div><div class="tab" id="manager_tab">Manager</div><div style="clear: both"></div></div><div id="mediaupload" class="mediaupload">
 	<form method="post" enctype="multipart/form-data" action="/admin/upload" target="upload_target" onsubmit="$('upload_wait').show(); $('upload_submit').disabled=true;">
 		<table style="width: 100%">
 			<tr>
@@ -315,7 +311,7 @@ $(document).observe('dom:loaded', function(){
 			</tr>
 			<tr>
 				<td colspan="2">
-					<span class="stay_low">NB! Allowed file types: JPG, PNG, GIF. Max. file size 1 MB.</span>
+					<span class="stay_low">NB! Max. file size 1 MB.</span>
 				</td>
 			</tr>
 			<tr>
@@ -337,15 +333,12 @@ $(document).observe('dom:loaded', function(){
 		</table>
 	</form>
 	<iframe style="display:none" id="upload_target" name="upload_target"></iframe>
-
-</div>
-
-<div id="medialist" class="medialist" style="display: none">
+</div><div id="medialist" class="medialist" style="display: none">
 	<div id="medialist_files" class="medialist_files">
 	</div>
 	<div style="clear:both"></div>
 </div>
 
-
+{% endspaceless %}
 
 {% endblock %}

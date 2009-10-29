@@ -42,6 +42,7 @@ from django.template.loader import render_to_string
 # System
 import os
 import re
+from datetime import datetime, date, timedelta
 
 # Helpers
 from django.utils import simplejson as json
@@ -139,6 +140,7 @@ def set_site_prefs(site_prefs):
   s.value = json.dumps(site_prefs)
   s.put()
   memcache.set("site-prefs", site_prefs)
+  memcache.delete('feed')
 
 # error_404()
 # @param self Object
@@ -224,7 +226,6 @@ def get_links():
 # Main handler, displays the frontpage and all other CMS pages
 
 class PageHandler(webapp.RequestHandler):
-
   def get(self, url=False):
     
     #Load site prefs
@@ -269,6 +270,51 @@ class PageHandler(webapp.RequestHandler):
       logging.debug('Template error')
       pass
     path = os.path.join(os.path.dirname(__file__), 'views/base.html')
+    self.response.out.write(template.render(path, template_values))
+
+
+# FeedHandler
+# Handler for RSS feed, displays the last 10 added pages
+
+class FeedHandler(webapp.RequestHandler):
+  def get(self, url=False):
+    
+    #Load site prefs
+    site_prefs = get_site_prefs()
+
+    # Sat, 08 Aug 2009 12:57:53 +0000
+    fmt = '%a, %d %b %Y %H:%M:%S +0000'
+
+    items = memcache.get('feed')
+    if items is None:
+      items = []
+      query = db.GqlQuery("SELECT * FROM Page WHERE draft = :1 ORDER BY created DESC", False)
+      for page in query:
+        item = {
+            'title':page.title,
+            'content': page.content,
+            'url': page.url,
+            'date':page.created.strftime(fmt)
+        }
+        items.append(item)
+      memcache.set('feed',items)
+
+    if len(items):
+      pubdate = items[0]['date']
+    else:
+      pubdate = datetime.utcnow().strftime(fmt)
+
+    template_values = {
+        'title': site_prefs['title'],
+        'description': site_prefs['description'],
+        'domain':os.environ['HTTP_HOST'],
+        'pubdate': pubdate,
+        'items':items
+    }
+    
+    self.response.headers['Content-Type'] = 'application/rss+xml; Charset=utf-8'
+
+    path = os.path.join(os.path.dirname(__file__), 'views/feed.html')
     self.response.out.write(template.render(path, template_values))
       
 
@@ -316,6 +362,7 @@ class AdminPublishHandler(webapp.RequestHandler):
     page.put()
     memcache.set("page-%s" % page.url, page)
     memcache.delete("site-links")
+    memcache.delete("feed")
     self.redirect("/admin?published=%s" % key)
 
 # AdminUnPublishHandler
@@ -334,6 +381,7 @@ class AdminUnPublishHandler(webapp.RequestHandler):
     page.put()
     memcache.set("page-%s" % page.url, page)
     memcache.delete("site-links")
+    memcache.delete("feed")
     self.redirect("/admin?unpublished=%s" % key)
 
 # AdminRemoveHandler
@@ -352,6 +400,7 @@ class AdminRemoveHandler(webapp.RequestHandler):
     page.delete()
     memcache.delete("page-%s" % url)
     memcache.delete("site-links")
+    memcache.delete("feed")
     self.redirect("/admin?removed=true")
 
 # AdminEditHandler
@@ -443,6 +492,7 @@ class AdminEditHandler(webapp.RequestHandler):
         
     page.put()
     memcache.set("page-%s" % page.url, page)
+    memcache.delete('feed')
     
     if on_front:
       # Set to front page
@@ -517,7 +567,8 @@ class AdminUploadHandler(webapp.RequestHandler):
       return
 
     media = Media()
-    media.name = self.request.params['file'].filename
+    # strip out the path Internet Explorer provides with the filename
+    media.name = self.request.params['file'].filename.encode('utf-8').split("\\").pop().decode('utf-8')
     media.description = self.request.get('description')
 
     try:
@@ -626,6 +677,7 @@ def main():
                                         (r'/page/(.*)', PageHandler),
                                         (r'/image/(.*)/(.*)/(.*)', ImageHandler),
                                         (r'/download/(.*)/(.*)', MediaHandler),
+                                        ('/feed', FeedHandler),
                                         ('/admin/upload', AdminUploadHandler),
                                         ('/admin', AdminMainHandler),
                                         ('/admin/add', AdminEditHandler),
