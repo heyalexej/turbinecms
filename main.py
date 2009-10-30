@@ -43,6 +43,7 @@ from django.template.loader import render_to_string
 import os
 import re
 from datetime import datetime, date, timedelta
+from google.appengine.api import users
 
 # Helpers
 from django.utils import simplejson as json
@@ -338,6 +339,7 @@ class AdminMainHandler(webapp.RequestHandler):
         'description': site_prefs['description'],
         'pages': pages,
         'links': get_links(),
+        'logouturl': users.create_logout_url("/"),
         'removed': self.request.get('removed') and True or False,
         'updated': self.request.get('updated') and True or False,
         'saved': self.request.get('saved') and self.request.get('saved') or False,
@@ -445,6 +447,7 @@ class AdminEditHandler(webapp.RequestHandler):
         'page': page,
         'front':page and site_prefs['front']==page.url or False,
         'links': get_links(),
+        'logouturl': users.create_logout_url("/"),
         'files': json.dumps(files)
     }
     path = os.path.join(os.path.dirname(__file__), 'views/edit.html')
@@ -518,7 +521,8 @@ class AdminSiteHandler(webapp.RequestHandler):
         'description': site_prefs['description'],
         'templateText': site_prefs['templateText'],
         'templateDefault': site_prefs['templateDefault'],
-        'links': get_links()
+        'links': get_links(),
+        'logouturl': users.create_logout_url("/")
     }
     path = os.path.join(os.path.dirname(__file__), 'views/site.html')
     self.response.out.write(template.render(path, template_values))
