@@ -156,15 +156,24 @@ def error_404(self):
     'site_title': site_prefs['title'],
     'description': site_prefs['description'],
     'title': u'Not Found',
-    'content': u'The requested URL %s was not found on this server.' % self.request.path,
-    'links': get_links()
+    
+    'links': get_links(),
+    'page': {
+        'title':'404 Not found',
+        'content': u'The requested URL %s was not found on this server.' % self.request.path,
+        'created':datetime.utcnow()
+    }
   }
   
   try:
-    if not site_prefs['templateDefault'] and len(site_prefs['templateText'].strip()):
-      self.response.out.write(Template(site_prefs['templateText']).render(path, template_values))
+    if not site_prefs.get('templateDefault',False) and site_prefs.get('templateText', False):
+      t = Template(site_prefs['templateText'].encode('utf-8'))
+      c = Context(template_values)
+      tmpl = t.render(c)
+      self.response.out.write(tmpl)
       return
   except:
+    logging.debug('Template error')
     pass
   path = os.path.join(os.path.dirname(__file__), 'views/base.html')
   self.response.out.write(template.render(path, template_values))
